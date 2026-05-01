@@ -48,21 +48,26 @@ router.get('/job/:jobId', auth, async (req, res) => {
 // PUT update application status (protected)
 router.put('/:id', auth, async (req, res) => {
   try {
+    const validStatuses = ['pending', 'reviewed', 'accepted', 'rejected'];
+    if (!req.body.status || !validStatuses.includes(req.body.status)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
     const application = await Application.findByIdAndUpdate(
       req.params.id,
       { status: req.body.status },
       { new: true }
     );
+    if (!application) return res.status(404).json({ error: 'Application not found' });
     res.json(application);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// DELETE cancel application (protected)
 router.delete('/:id', auth, async (req, res) => {
   try {
-    await Application.findByIdAndDelete(req.params.id);
+    const application = await Application.findByIdAndDelete(req.params.id);
+    if (!application) return res.status(404).json({ error: 'Application not found' });
     res.json({ message: 'Application cancelled' });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
