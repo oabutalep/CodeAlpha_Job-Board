@@ -8,7 +8,14 @@ const { auth, SECRET } = require('../middleware/auth');
 // POST register employer
 router.post('/register', async (req, res) => {
   try {
-    const hashed = await bcrypt.hash(req.body.password, 10);
+    const { name, email, password, company } = req.body;
+    if (!name || !email || !password || !company) {
+      return res.status(400).json({ error: 'name, email, password, and company are required' });
+    }
+    const existing = await Employer.findOne({ email });
+    if (existing) return res.status(400).json({ error: 'Email already exists' });
+
+    const hashed = await bcrypt.hash(password, 10);
     const employer = new Employer({ ...req.body, password: hashed });
     await employer.save();
     res.status(201).json({ message: 'Employer registered successfully' });
@@ -17,13 +24,16 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// POST login employer
 router.post('/login', async (req, res) => {
   try {
-    const employer = await Employer.findOne({ email: req.body.email });
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'email and password are required' });
+    }
+    const employer = await Employer.findOne({ email });
     if (!employer) return res.status(404).json({ error: 'Employer not found' });
 
-    const match = await bcrypt.compare(req.body.password, employer.password);
+    const match = await bcrypt.compare(password, employer.password);
     if (!match) return res.status(401).json({ error: 'Wrong password' });
 
     const token = jwt.sign({ id: employer._id, role: 'employer' }, SECRET, { expiresIn: '7d' });
@@ -32,7 +42,6 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
-
 // GET employer profile (protected)
 router.get('/:id', auth, async (req, res) => {
   try {
