@@ -34,6 +34,10 @@ router.get('/:id', async (req, res) => {
 // POST create job (protected)
 router.post('/', auth, async (req, res) => {
   try {
+    const { title, description, location } = req.body;
+    if (!title || !description || !location) {
+      return res.status(400).json({ error: 'title, description, and location are required' });
+    }
     const job = new Job({ ...req.body, company: req.user.id });
     await job.save();
     res.status(201).json(job);
@@ -45,7 +49,8 @@ router.post('/', auth, async (req, res) => {
 // DELETE job (protected)
 router.delete('/:id', auth, async (req, res) => {
   try {
-    await Job.findByIdAndDelete(req.params.id);
+    const job = await Job.findByIdAndDelete(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
     res.json({ message: 'Job deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
