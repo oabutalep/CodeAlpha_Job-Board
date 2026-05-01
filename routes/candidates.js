@@ -8,7 +8,14 @@ const { auth, SECRET } = require('../middleware/auth');
 // POST register candidate
 router.post('/register', async (req, res) => {
   try {
-    const hashed = await bcrypt.hash(req.body.password, 10);
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'name, email, and password are required' });
+    }
+    const existing = await Candidate.findOne({ email });
+    if (existing) return res.status(400).json({ error: 'Email already exists' });
+
+    const hashed = await bcrypt.hash(password, 10);
     const candidate = new Candidate({ ...req.body, password: hashed });
     await candidate.save();
     res.status(201).json({ message: 'Candidate registered successfully' });
@@ -17,13 +24,16 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// POST login candidate
 router.post('/login', async (req, res) => {
   try {
-    const candidate = await Candidate.findOne({ email: req.body.email });
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'email and password are required' });
+    }
+    const candidate = await Candidate.findOne({ email });
     if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
 
-    const match = await bcrypt.compare(req.body.password, candidate.password);
+    const match = await bcrypt.compare(password, candidate.password);
     if (!match) return res.status(401).json({ error: 'Wrong password' });
 
     const token = jwt.sign({ id: candidate._id, role: 'candidate' }, SECRET, { expiresIn: '7d' });
